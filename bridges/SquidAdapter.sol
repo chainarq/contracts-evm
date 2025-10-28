@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.25;
+
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -21,6 +22,11 @@ contract SquidAdapter is Initializable, IBridgeAdapter, NativeWrap {
 
     mapping(address => bool) public supportedRouters;
     mapping(bytes32 => bool) public transfers;
+
+    modifier onlySelf(){
+        require(_msgSender() == address(this), "only self");
+        _;
+    }
 
     function initialize(address _nativeWrap) external initializer {
         __Context_init();
@@ -49,11 +55,18 @@ contract SquidAdapter is Initializable, IBridgeAdapter, NativeWrap {
         // ISquidRouter _router = ISquidRouter(params.router);
         address _router = params.router;
 
-        IERC20U(_token).forceApprove(address(_router), _amount);
+        IERC20U _tok = IERC20U(_token);
+
+        _tok.forceApprove(address(_router), _amount);
 
         _router.call{value: msg.value}(params.data);
 
-        IERC20U(_token).safeApprove(address(_router), 0);
+        _tok.safeApprove(address(_router), 0);
+
+        if (_tok.balanceOf(address(this)) >= _amount) {
+            revert("SquidAdapter: router call failed");
+        }
+
     }
 
     function setSupportedRouters(address[] memory _routers, bool _enabled) public onlyOwner {

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.25;
+
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-abstract contract Multicallable is OwnableUpgradeable {
+abstract contract MultiCallable is OwnableUpgradeable {
 
     address public multicall;
 

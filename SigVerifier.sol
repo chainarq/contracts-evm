@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.25;
+
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-
 
 /**
  * @title Allows owner to set signer, and verifies signatures
@@ -18,6 +18,7 @@ contract SigVerifier is OwnableUpgradeable {
     event SignerUpdated(address from, address to);
 
     function initSigVerifier(address _signer) internal onlyInitializing {
+        __Ownable_init();
         _setSigner(_signer);
     }
 

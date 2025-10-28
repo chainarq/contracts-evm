@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.25;
+
 
 import "../interfaces/ICodec.sol";
 import "../interfaces/IERC20.sol";
@@ -13,7 +14,7 @@ contract ZeroXCodec is ICodec {
 // 0x6af479b2: sellTokenForTokenToUniswapV3(bytes,uint256,uint256,address)
 // 0x7a1eb1b9: multiplexBatchSellTokenForToken(address,address,(uint8,uint256,bytes)[],uint256,uint256)
 
-    function decodeCalldata(ICodec.Swap calldata _swap) external view returns (uint256 amountIn, address tokenIn, address tokenOut) {
+    function decodeCalldata(ICodec.Swap calldata _swap) external pure returns (uint256 amountIn, address tokenIn, address tokenOut) {
         bytes4 selector = bytes4(_swap.data);
 
         if (selector == IPancakeSwapFeature.sellToPancakeSwap.selector) {

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.25;
+
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -10,7 +11,6 @@ import "../lib/Pauser.sol";
 import "../lib/MessageSenderLib.sol";
 import "../lib/MessageReceiver.sol";
 import "../lib/NativeWrap.sol";
-import "../lib/Types.sol";
 import "../interfaces/IBridgeAdapter.sol";
 import "../interfaces/IIntermediaryOriginalToken.sol";
 
@@ -24,8 +24,9 @@ contract CBridgeAdapter is Initializable, MessageReceiver, IBridgeAdapter, Nativ
         __Context_init();
         __Ownable_init();
 
-        initNativeWrap(_nativeWrap);
         initMessageReceiver(_messageBus);
+        initNativeWrap(_nativeWrap);
+        initPauser();
     }
 
     struct CBridgeParams {

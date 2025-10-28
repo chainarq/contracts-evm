@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.25;
+
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-import "../lib/Multicallable.sol";
+import "../lib/MultiCallable.sol";
 
 import "../interfaces/IBridgeAdapter.sol";
 
@@ -14,7 +15,7 @@ import "../interfaces/IBridgeAdapter.sol";
  * @author lionelhoho
  * @author Padoriku
  */
-abstract contract BridgeRegistry is Multicallable {
+abstract contract BridgeRegistry is MultiCallable {
     event SupportedBridgesUpdated(string[] providers, address[] adapters);
 
     mapping(bytes32 => IBridgeAdapter) public bridges;

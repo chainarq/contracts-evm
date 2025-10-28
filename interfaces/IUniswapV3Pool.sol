@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.25;
+
 
 interface IUniswapV3Pool {
     /// @notice Swap token0 for token1, or token1 for token0

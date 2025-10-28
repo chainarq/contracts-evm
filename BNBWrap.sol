@@ -1,5 +1,6 @@
-// SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.19;
+// SPDX-License-Identifier: Unlicensed
+pragma solidity ^0.8.25;
+
 
 // @notice This contract is used only on BSC, due to some bizzare issue with WBNB withdrawals,
 //         which consistently fail when (apparently) being called from within an openzeppelin proxied contract.

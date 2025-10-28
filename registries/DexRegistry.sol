@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.25;
+
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-import "../lib/Multicallable.sol";
+import "../lib/MultiCallable.sol";
 
 import "../interfaces/ICodec.sol";
 
@@ -12,7 +13,7 @@ import "../interfaces/ICodec.sol";
  * @title Manages a list supported dex
  * @author Padoriku
  */
-abstract contract DexRegistry is Multicallable {
+abstract contract DexRegistry is MultiCallable {
     event DexCodecUpdated(address dex, bytes4 selector, address codec);
 
     // supported swap functions

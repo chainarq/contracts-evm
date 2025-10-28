@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.25;
+
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
@@ -13,6 +14,7 @@ abstract contract Pauser is OwnableUpgradeable, PausableUpgradeable {
     event PauserRemoved(address account);
 
     function initPauser() internal onlyInitializing {
+        __Pausable_init();
         _addPauser(_msgSender());
     }
 

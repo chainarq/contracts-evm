@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.25;
+
 
 interface ILayerZeroReceiver {
     // @notice LayerZero endpoint will invoke this function to deliver the message on the destination

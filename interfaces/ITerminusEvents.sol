@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.25;
+
 
 import "../lib/Types.sol";
 
@@ -12,5 +13,7 @@ interface ITerminusEvents {
      */
     event StepExecuted(bytes32 id, uint256 amountOut, address tokenOut);
 
-    event CustodianFundClaimed(address receiver, uint256 erc20Amount, address token, uint256 nativeAmount);
+    event SwapFailedRefunded(bytes32 id, uint256 amountOut, address tokenOut);
+
+    event CustodianFundClaimed(address custodian, address sender, address receiver, uint256 erc20Amount, address token, uint256 nativeAmount);
 }

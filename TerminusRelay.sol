@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.25;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 import "./lib/Types.sol";
+import "./lib/TypeCasts.sol";
 import "./lib/MessageReceiver.sol";
-import "./lib/Multicallable.sol";
+import {MailboxClient} from "./lib/MailboxClient.sol";
+import "./lib/EnumerableMapExtended.sol";
 
 import "./interfaces/IMessageBus.sol";
 import "./interfaces/ILayerZeroReceiver.sol";
@@ -15,11 +17,19 @@ import "./interfaces/ILayerZeroEndpoint.sol";
 import "./interfaces/IStargateRouter.sol";
 import "./interfaces/IStargateReceiver.sol";
 import "./interfaces/IERC20U.sol";
+import "./interfaces/ITerminus.sol";
+import "./interfaces/IMailbox.sol";
+import "./interfaces/IMessageRecipient.sol";
+import "./interfaces/ICircleMessageReceiver.sol";
+import "./interfaces/ITerminusTlp.sol";
 
-import "./Terminus.sol";
-
-contract TerminusRelay is Initializable, Multicallable, MessageReceiver, ILayerZeroReceiver, IStargateReceiver, ReentrancyGuardUpgradeable {
+contract TerminusRelay is Initializable, MailboxClient, MessageReceiver, ILayerZeroReceiver, IStargateReceiver, IMessageRecipient {
+    using EnumerableMapExtended for EnumerableMapExtended.UintToBytes32Map;
     using SafeERC20Upgradeable for IERC20U;
+    using TypeCasts for address;
+    using TypeCasts for bytes32;
+    using TypeCasts for uint64;
+    using Strings for uint32;
 
     // @notice: the addresses allowed to execute messages
     mapping(address => bool) public executors;
@@ -40,12 +50,24 @@ contract TerminusRelay is Initializable, Multicallable, MessageReceiver, ILayerZ
 
     ILayerZeroEndpoint public lzEndpoint;
 
-    Terminus public terminus;
+    ITerminus public terminus;
+    ITerminusTlp public terminusTlp;
 
     mapping(address => bool) public supportedRouters;
 
     // messageId => payload hash
     mapping(bytes32 => bytes32) public msgQueue;
+
+    EnumerableMapExtended.UintToBytes32Map internal _hlRemotes;
+
+    // @notice DomainId to ChainId
+    mapping(uint32 => uint64) public domToChId;
+    // @notice ChainId to DomainId
+    mapping(uint64 => uint32) public chToDomId;
+
+    ICircleMessageReceiver public cctpMessageTransmitter;
+
+    address public terminusDelegate;
 
     event MessageSent(bytes32 id, address remote, uint64 dstChainId, bytes payload, MessageVia via);
     event MessageExecuted(bytes32 id, uint timestamp);
@@ -54,16 +76,25 @@ contract TerminusRelay is Initializable, Multicallable, MessageReceiver, ILayerZ
     event InvalidMessage(address source, uint64 srcChainId, bytes message, MessageVia via);
     event InvalidCustodian(address source, uint64 srcChainId, bytes message, MessageVia via);
 
+    /**
+   * @dev Teleporter:  Emitted when a message is submited to be sent.
+     */
+    event TeleporterSendMessage(bytes32 destinationBlockchainID, address destinationAddress, address feeTokenAddress, uint256 feeAmount, uint256 requiredGasLimit, bytes32 messageId, bytes message);
+    event TeleporterReceivedMessage(bytes32 sourceBlockchainID, address originSenderAddress, bytes payload);
+
+//    event TeleporterDbgSent(uint64 dstChainId, bytes32 destinationBlockchainID, address destinationAddress);
+
+
     function initialize(address _messageBus) external initializer {
         __Context_init();
-        __Ownable_init();
+        _MailboxClient_initialize(address(0), address(0), _msgSender());
         initMessageReceiver(_messageBus);
 
         defaultGasQty = 5e5;
     }
 
     modifier onlyTerminus() {
-        require(_msgSender() == address(terminus), "only terminus");
+        require(address(terminus) == _msgSender() || address(terminusDelegate) == _msgSender(), "only terminus");
         _;
     }
 
@@ -82,8 +113,8 @@ contract TerminusRelay is Initializable, Multicallable, MessageReceiver, ILayerZ
         _;
     }
 
-    modifier onlySelf(){
-        require(_msgSender() == address(this), "only self");
+    modifier onlyTerminusTlp(){
+        require(_msgSender() == address(terminusTlp), "only tlp");
         _;
     }
 
@@ -98,13 +129,13 @@ contract TerminusRelay is Initializable, Multicallable, MessageReceiver, ILayerZ
         Types.Message memory _msg = abi.decode((_message), (Types.Message));
         require(_msg.execs.length > 0, "nop");
 
-        terminus.executeReceivedMessage{value: msg.value}(_msg, _executor);
+        terminus.executeReceivedMessage{value: msg.value}(_msg, _executor, false);
 
         emit MessageExecuted(_msg.id, block.timestamp);
         return ExecutionStatus.Success;
     }
 
-    function sgReceive(uint16 _srcLzChainId, bytes memory _srcAddress, uint _nonce, address _token, uint amountLD, bytes memory _payload) override external {
+    function sgReceive(uint16 _srcLzChainId, bytes memory _srcAddress, uint /*_nonce*/, address _token, uint amountLD, bytes memory _payload) override external {
         require(supportedRouters[_msgSender()], "only sg");
 
         address _remote;
@@ -144,7 +175,7 @@ contract TerminusRelay is Initializable, Multicallable, MessageReceiver, ILayerZ
     }
 
     /* @dev: tolerant/nonblocking: will not revert when the conditions are not met, instead will not place the payload in to execution queue */
-    function lzReceive(uint16 _srcLzChainId, bytes memory _srcAddress, uint64 _lzNonce, bytes memory _payload) public virtual override onlyLZEndpoint {
+    function lzReceive(uint16 _srcLzChainId, bytes memory _srcAddress, uint64 /*_lzNonce*/, bytes memory _payload) public virtual override onlyLZEndpoint {
         address _remote;
         assembly ("memory-safe") {
             _remote := mload(add(_srcAddress, 20))
@@ -178,36 +209,49 @@ contract TerminusRelay is Initializable, Multicallable, MessageReceiver, ILayerZ
         return abi.decode((_payload), (Types.Message));
     }
 
-    function messageFee(bytes calldata message, uint64 dstChainId, MessageVia _via) external view returns (uint nativeFee) {
+    function messageFee(bytes calldata _message, uint64 _dstChainId, MessageVia _via) external view returns (uint nativeFee) {
         if (_via == MessageVia.Celer) {
-            nativeFee = IMessageBus(messageBus).calcFee(message);
+            nativeFee = IMessageBus(messageBus).calcFee(_message);
         } else if (_via == MessageVia.LayerZero) {
-            (nativeFee,) = lzEndpoint.estimateFees(chToLZId[dstChainId], address(this), message, false, abi.encodePacked(uint16(1), defaultGasQty));
+            (nativeFee,) = lzEndpoint.estimateFees(chToLZId[_dstChainId], address(this), _message, false, abi.encodePacked(uint16(1), defaultGasQty));
+        } else if (_via == MessageVia.Hyperlane) {
+            nativeFee = _quoteDispatch(chToDomId[_dstChainId], remotes[_dstChainId].addressToBytes32(), _message);
+        } else if (_via == MessageVia.Teleporter) {
+            // TODO
+            nativeFee = 0;
         }
     }
 
-    function sendMessage(uint64 dstChainId, bytes calldata _payload, uint msgFee, MessageVia _via) external payable onlyTerminus {
-        require(remotes[dstChainId] != address(0), "unknown remote");
+    function sendMessage(uint64 _dstChainId, bytes calldata _payload, uint _msgFee, uint _brgGasLimit, MessageVia _via) external payable onlyTerminus {
+        require(remotes[_dstChainId] != address(0), "unknown remote");
         if (_via == MessageVia.Celer) {
-            IMessageBus(messageBus).sendMessage{value: msgFee}(remotes[dstChainId], dstChainId, _payload);
+            IMessageBus(messageBus).sendMessage{value: _msgFee}(remotes[_dstChainId], _dstChainId, _payload);
         } else if (_via == MessageVia.LayerZero) {
-            bytes memory remoteAndLocalAddresses = abi.encodePacked(remotes[dstChainId], address(this));
-            lzEndpoint.send{value: msgFee}(chToLZId[dstChainId], remoteAndLocalAddresses, _payload, payable(address(terminus)), address(0), abi.encodePacked(uint16(1), defaultGasQty));
+            bytes memory remoteAndLocalAddresses = abi.encodePacked(remotes[_dstChainId], address(this));
+            lzEndpoint.send{value: _msgFee}(chToLZId[_dstChainId], remoteAndLocalAddresses, _payload, payable(address(terminus)), address(0), abi.encodePacked(uint16(1), defaultGasQty));
+        } else if (_via == MessageVia.Hyperlane) {
+            _dispatch(chToDomId[_dstChainId], remotes[_dstChainId].addressToBytes32(), _msgFee, _payload);
+        } else if (_via == MessageVia.Teleporter) {
+            terminusTlp.sendTeleporterMessage(_dstChainId, address(0), 0, _brgGasLimit, _payload);
         } else {
             revert("unknown msg provider");
         }
 
         Types.Message memory _msg = abi.decode((_payload), (Types.Message));
 
-        emit MessageSent(_msg.id, remotes[dstChainId], dstChainId, _payload, _via);
+        emit MessageSent(_msg.id, remotes[_dstChainId], _dstChainId, _payload, _via);
     }
 
-    function processMessage(bytes32 id, bytes calldata _payload) external onlyExecutor {
+    function tlpMsgQueue(bytes32 id, bytes32 msgHash) external onlyTerminusTlp {
+        msgQueue[id] = msgHash;
+    }
+
+    function processMessage(bytes32 id, bytes calldata _payload, bool retrySwap) external payable onlyExecutor {
         bytes32 _qHash = msgQueue[id];
 
         require(_qHash == keccak256(_payload), "MSG::NOTFOUND");
 
-        terminus.executeReceivedMessage(abi.decode((_payload), (Types.Message)), _msgSender());
+        terminus.executeReceivedMessage{value: msg.value}(abi.decode((_payload), (Types.Message)), _msgSender(), retrySwap);
 
         delete msgQueue[id];
 
@@ -229,18 +273,29 @@ contract TerminusRelay is Initializable, Multicallable, MessageReceiver, ILayerZ
     }
 
     function setTerminus(address _addr) external onlyOwnerMulticall {
-        terminus = Terminus(payable(_addr));
+        terminus = ITerminus(payable(_addr));
+    }
+
+    function setTerminusTlp(address _addr) external onlyOwnerMulticall {
+        terminusTlp = ITerminusTlp(payable(_addr));
+    }
+
+    function setTerminusDelegate(address _addr) external onlyOwnerMulticall {
+        terminusDelegate = _addr;
     }
 
     function setLZEndpoint(address _addr) external onlyOwnerMulticall {
         lzEndpoint = ILayerZeroEndpoint(_addr);
     }
 
-    function setLZChainIds(uint16[] memory _lzIds, uint64[] memory _chainIds) external onlyOwnerMulticall {
+    // Teleporter IDs, LZ IDs and Domain IDs mappings to ChainIDs
+    function setLZDomainChainIds(uint16[] memory _lzIds, uint32[] memory _domIds, uint64[] memory _chainIds) external onlyOwnerMulticall {
         require(_lzIds.length == _chainIds.length, "lengths mismatch");
         for (uint i = 0; i < _lzIds.length; i++) {
             lzToChId[_lzIds[i]] = _chainIds[i];
             chToLZId[_chainIds[i]] = _lzIds[i];
+            domToChId[_domIds[i]] = _chainIds[i];
+            chToDomId[_chainIds[i]] = _domIds[i];
         }
     }
 
@@ -274,6 +329,134 @@ contract TerminusRelay is Initializable, Multicallable, MessageReceiver, ILayerZ
             supportedRouters[_routers[i]] = _enabled;
         }
     }
+
+    /************** CIRCLE CCTP SECTION ***************/
+
+    function circleReceiveMessage(bytes calldata message, bytes calldata attestation) external onlyExecutor {
+        cctpMessageTransmitter.receiveMessage(message, attestation);
+    }
+
+    function setCircleMessageTransmitter(address _addr) external onlyOwnerMulticall {
+        cctpMessageTransmitter = ICircleMessageReceiver(_addr);
+    }
+
+    /************** HYPERLANE SECTION ***************/
+
+    function domains() external view returns (uint32[] memory) {
+        return _hlRemotes.uint32Keys();
+    }
+
+    function hlRemotes(uint32 _domain) public view virtual returns (bytes32) {
+        (, bytes32 _hlRemote) = _hlRemotes.tryGet(_domain);
+        return _hlRemote;
+    }
+
+    function unenrollRemoteHLRemote(uint32 _domain) external virtual onlyOwnerMulticall {
+        _unenrollRemoteHLRemote(_domain);
+    }
+
+    function enrollRemoteHLRemote(uint32 _domain, bytes32 _hlRemote) external virtual onlyOwnerMulticall {
+        _enrollRemoteHLRemote(_domain, _hlRemote);
+    }
+
+    function enrollRemoteHLRemotes(uint32[] calldata _domains, address[] calldata _addresses) external virtual onlyOwnerMulticall {
+        require(_domains.length == _addresses.length, "!length");
+        uint256 length = _domains.length;
+        for (uint256 i = 0; i < length; i += 1) {
+            _enrollRemoteHLRemote(_domains[i], _addresses[i].addressToBytes32());
+        }
+    }
+
+    function unenrollRemoteHLRemotes(uint32[] calldata _domains) external virtual onlyOwnerMulticall {uint256 length = _domains.length;
+        for (uint256 i = 0; i < length; i += 1) {
+            _unenrollRemoteHLRemote(_domains[i]);
+        }
+    }
+
+    function _enrollRemoteHLRemote(uint32 _domain, bytes32 _address) internal virtual {
+        _hlRemotes.set(_domain, _address);
+    }
+
+    function _unenrollRemoteHLRemote(uint32 _domain) internal virtual {
+        require(_hlRemotes.remove(_domain), _domainNotFoundError(_domain));
+    }
+
+    function _isRemoteHLRemote(uint32 _domain, bytes32 _address) internal view returns (bool) {
+        return hlRemotes(_domain) == _address;
+    }
+
+    function _mustHaveRemoteHLRemote(uint32 _domain) internal view returns (bytes32) {
+        (bool contained, bytes32 _hlRemote) = _hlRemotes.tryGet(_domain);
+        require(contained, _domainNotFoundError(_domain));
+        return _hlRemote;
+    }
+
+    function _domainNotFoundError(uint32 _domain) internal pure returns (string memory) {
+        return string.concat("No router enrolled for hlremote: ", _domain.toString());
+    }
+
+    function _dispatch(uint32 _destinationDomain, bytes memory _messageBody) internal virtual returns (bytes32) {
+        return _dispatch(_destinationDomain, msg.value, _messageBody);
+    }
+
+    function _dispatch(uint32 _destinationDomain, uint256 _value, bytes memory _messageBody) internal virtual returns (bytes32) {
+        bytes32 _hlRemote = _mustHaveRemoteHLRemote(_destinationDomain);
+        return super._dispatch(_destinationDomain, _hlRemote, _value, _messageBody);
+    }
+
+    function _quoteDispatch(uint32 _destinationDomain, bytes memory _messageBody) internal view virtual returns (uint256) {
+        bytes32 _hlRemote = _mustHaveRemoteHLRemote(_destinationDomain);
+        return super._quoteDispatch(_destinationDomain, _hlRemote, _messageBody);
+    }
+
+    function handle(uint32 _origin, bytes32 _sender, bytes calldata _message) external payable onlyMailbox {
+        _handle(_origin, _sender, _message);
+    }
+
+    function _handle(uint32 _srcDomainId, bytes32 _sender, bytes memory _payload) internal {
+        address _remote = _sender.bytes32ToAddress();
+
+        if (remotes[domToChId[_srcDomainId]] != _remote) {
+            emit UnknownRemote(_remote, domToChId[_srcDomainId], _payload, MessageVia.Hyperlane);
+            return;
+        }
+
+        Types.Message memory _msg;
+
+        try this._decodePayload(_payload){
+            _msg = this._decodePayload(_payload);
+        } catch {
+            emit InvalidMessage(_remote, domToChId[_srcDomainId], _payload, MessageVia.Hyperlane);
+            return;
+        }
+
+        if (_msg.execs.length == 0) {
+            emit InvalidMessage(_remote, domToChId[_srcDomainId], _payload, MessageVia.Hyperlane);
+            return;
+        }
+
+        msgQueue[_msg.id] = keccak256(_payload);
+
+        emit MessageReceived(_msg.id, _remote, domToChId[_srcDomainId], _payload, MessageVia.Hyperlane);
+    }
+
+    /* function sendMessageTest(uint64 _dstChainId, bytes calldata _payload, uint msgFee, MessageVia _via) external payable onlyOwnerMulticall {
+        require(remotes[_dstChainId] != address(0), "unknown remote");
+        if (_via == MessageVia.Celer) {
+            IMessageBus(messageBus).sendMessage{value: msgFee}(remotes[_dstChainId], _dstChainId, _payload);
+        } else if (_via == MessageVia.LayerZero) {
+            bytes memory remoteAndLocalAddresses = abi.encodePacked(remotes[_dstChainId], address(this));
+            lzEndpoint.send{value: msgFee}(chToLZId[_dstChainId], remoteAndLocalAddresses, _payload, payable(address(terminus)), address(0), abi.encodePacked(uint16(1), defaultGasQty));
+        } else if (_via == MessageVia.Hyperlane) {
+            _dispatch(chToDomId[_dstChainId], remotes[_dstChainId].addressToBytes32(), msgFee, _payload);
+        } else {
+            revert("unknown msg provider");
+        }
+
+        Types.Message memory _msg = abi.decode((_payload), (Types.Message));
+
+        emit MessageSent(_msg.id, remotes[_dstChainId], _dstChainId, _payload, _via);
+    } */
 
 
     receive() external payable {}

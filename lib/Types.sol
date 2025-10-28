@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.19;
-
+pragma solidity ^0.8.25;
 
 import "./MsgDataTypes.sol";
 import "../interfaces/ICodec.sol";
@@ -8,15 +7,14 @@ import "../interfaces/ICodec.sol";
     enum SwapType {
         None,
         Local,
-        Direct,
-        SwapSrc,
-        SwapDst,
-        SwapSrcDst
+        Cross
     }
 
     enum MessageVia {
         Celer,
-        LayerZero
+        LayerZero,
+        Hyperlane,
+        Teleporter
     }
 
 library Types {
@@ -26,16 +24,14 @@ library Types {
         uint64 nonce;
         // the unix timestamp before which the fee is valid
         uint64 deadline;
-        // sig of sha3("executor fee", srcChainId, amountIn, tokenIn, deadline, toChainId, bridgeOutToken, bridgeOutFallbackToken[, toChainId, bridgeOutToken,  bridgeOutFallbackToken]...)
+        // sig of sha3("executor fee", srcChainId, amountIn, tokenIn, deadline, toChainId, bridgeOutToken[, toChainId, bridgeOutToken]...)
         // see _verifyQuote()
         bytes quoteSig;
         uint256 amountIn;
+        uint256 gaslessFees;
         address tokenIn;
         bool nativeIn;
-    }
-
-    function emptySource() internal pure returns (Source memory) {
-        return Source(0, 0, "", 0, address(0), false);
+        address splitAddr;
     }
 
     struct Destination {
@@ -56,16 +52,10 @@ library Types {
         ICodec.Swap[] swaps;
         Bridge bridge;
         address bridgeOutToken;
-        // some bridges utilize a intermediary token (e.g. hToken for Hop and anyToken for Multichain)
-        // in cases where there isn't enough underlying token liquidity on the dst chain, the user/pocket
-        // could receive this token as a fallback. remote Terminus needs to know what this token is
-        // in order to check whether a fallback has happened and refund the user.
-        address bridgeOutFallbackToken;
         // the minimum that remote Terminus needs to receive in order to allow the swap message
         // to execute. note that this differs from a normal slippages controlling variable and is
         // purely used to deter DoS attacks (detailed in Terminus).
         uint256 bridgeOutMin;
-        uint256 bridgeOutFallbackMin;
     }
 
     struct Bridge {
@@ -79,6 +69,13 @@ library Types {
         uint256 nativeFee;
         // the estimated cost of gas incase there is a swap on the destination chain, paid in native in the source chain
         uint256 dstGasCost;
+        // messaging fee ie LayerZero fee
+        uint256 msgFee;
+        // the below 3 are used for Teleporter
+        address bridgeFeeToken;
+        uint256 bridgeFeeTokenAmount;
+        uint256 bridgeGasLimit;
+
     }
 
     struct Message {
