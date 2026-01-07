@@ -242,8 +242,12 @@ contract TerminusRelay is Initializable, MailboxClient, MessageReceiver, ILayerZ
         emit MessageSent(_msg.id, remotes[_dstChainId], _dstChainId, _payload, _via);
     }
 
-    function tlpMsgQueue(bytes32 id, bytes32 msgHash) external onlyTerminusTlp {
+    /* Non blocking returns false if id already exists*/
+    function tlpMsgQueue(bytes32 id, bytes32 msgHash) external onlyTerminusTlp returns(bool) {
+        if(msgQueue[id]!="") return false;
+
         msgQueue[id] = msgHash;
+        return true;
     }
 
     function processMessage(bytes32 id, bytes calldata _payload, bool retrySwap) external payable onlyExecutor {

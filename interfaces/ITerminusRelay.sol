@@ -14,5 +14,5 @@ interface ITerminusRelay {
 
     function sendMessage(uint64 dstChainId, bytes calldata _payload, uint msgFee, uint brgGasLimit, MessageVia _via) external payable;
 
-    function tlpMsgQueue(bytes32 id, bytes32 msgHash) external;
+    function tlpMsgQueue(bytes32 id, bytes32 msgHash) external returns (bool);
 }

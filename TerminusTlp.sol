@@ -122,10 +122,11 @@ contract TerminusTlp is Initializable, MultiCallable, ReentrancyGuardUpgradeable
 
         uint64 _srcChainId = blkToChId[sourceBlockchainID];
 
-        /*if (remotes[_srcChainId] != _remote) {
+        // TeleporterTlp remote must be valid and nonzero.
+        if (remotes[_srcChainId] != _remote || _remote == address(0) || _srcChainId == 0) {
             emit UnknownRemote(_remote, _srcChainId, _payload, MessageVia.Teleporter);
             return;
-        }*/
+        }
 
         Types.Message memory _msg;
 
@@ -141,9 +142,12 @@ contract TerminusTlp is Initializable, MultiCallable, ReentrancyGuardUpgradeable
             return;
         }
 
-        tRelay.tlpMsgQueue(_msg.id, keccak256(_payload));
+        // Will return false if msg exists in the queue
+        bool _qSuccess = tRelay.tlpMsgQueue(_msg.id, keccak256(_payload));
 
-        emit TeleporterReceivedMessage(sourceBlockchainID, originSenderAddress, _payload);
+        if (_qSuccess) {
+            emit TeleporterReceivedMessage(sourceBlockchainID, originSenderAddress, _payload);
+        }
     }
 
     function setTerminus(address _addr) external onlyOwnerMulticall {
