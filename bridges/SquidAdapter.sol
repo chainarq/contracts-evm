@@ -45,6 +45,8 @@ contract SquidAdapter is Initializable, IBridgeAdapter, NativeWrap {
 
         require(transfers[transferId] == false, "transfer exists");
 
+        transfers[transferId] = true;
+
         _safeTransferFrom(_token, _msgSender(), address(this), _amount);
 
         _swap(_token, _amount, params);
