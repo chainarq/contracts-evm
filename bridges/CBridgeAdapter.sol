@@ -17,7 +17,14 @@ import "../interfaces/IIntermediaryOriginalToken.sol";
 contract CBridgeAdapter is Initializable, MessageReceiver, IBridgeAdapter, NativeWrap, Pauser {
     using SafeERC20Upgradeable for IERC20U;
 
+    address public terminus;
+
     event CBridgeRefunded(uint256 amount, address token, address receiver);
+
+    modifier onlyTerminus() {
+        require(_msgSender() == address(terminus), "only terminus");
+        _;
+    }
 
     /* constructor(address _nativeWrap, address _messageBus) NativeWrap(_nativeWrap) MessageReceiver(false, _messageBus) {} */
     function initialize(address _nativeWrap, address _messageBus) external initializer {
@@ -46,7 +53,7 @@ contract CBridgeAdapter is Initializable, MessageReceiver, IBridgeAdapter, Nativ
         address refundReceiver;
     }
 
-    function bridge(uint64 _dstChainId, address _receiver, uint256 _amount, address _token, bytes memory _bridgeParams, bytes memory /*_bridgePayload*/)
+    function bridge(uint64 _dstChainId, address _receiver, uint256 _amount, address _token, bytes memory _bridgeParams, bytes memory /*_bridgePayload*/) onlyTerminus
     external payable returns (bytes memory bridgeResp) {
         CBridgeParams memory params = abi.decode((_bridgeParams), (CBridgeParams));
         IERC20U(_token).safeTransferFrom(msg.sender, address(this), _amount);
@@ -131,6 +138,9 @@ contract CBridgeAdapter is Initializable, MessageReceiver, IBridgeAdapter, Nativ
         }
     }
 
+    function setTerminus(address _addr) external onlyOwner {
+        terminus = _addr;
+    }
 
     function rescueFund(address _token) external onlyOwner {
         if (_token == address(0)) {

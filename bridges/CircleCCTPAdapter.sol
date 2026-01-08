@@ -24,7 +24,14 @@ contract CircleCCTPAdapter is Initializable, IBridgeAdapter, OwnableUpgradeable 
     mapping(address => bool) public supportedRouters;
     mapping(bytes32 => bool) public transfers;
 
+    address public terminus;
+
     event CircleMessageSent(bytes32 transferId, uint amount, uint64 dstChainId);
+
+    modifier onlyTerminus() {
+        require(_msgSender() == address(terminus), "only terminus");
+        _;
+    }
 
     function initialize(address[] memory _routers) external initializer {
         __Context_init();
@@ -36,7 +43,7 @@ contract CircleCCTPAdapter is Initializable, IBridgeAdapter, OwnableUpgradeable 
         }
     }
 
-    function bridge(uint64 _dstChainId, address _receiver, uint256 _amount, address _token, bytes memory _bridgeParams, bytes memory _bridgePayload)
+    function bridge(uint64 _dstChainId, address _receiver, uint256 _amount, address _token, bytes memory _bridgeParams, bytes memory _bridgePayload) onlyTerminus
     external payable returns (bytes memory bridgeResp){
         CCTPParams memory params = abi.decode((_bridgeParams), (CCTPParams));
         require(supportedRouters[params.router], "illegal router");
@@ -84,6 +91,10 @@ contract CircleCCTPAdapter is Initializable, IBridgeAdapter, OwnableUpgradeable 
         } else {
             IERC20U(_token).safeTransfer(owner(), IERC20U(_token).balanceOf(address(this)));
         }
+    }
+
+    function setTerminus(address _addr) external onlyOwner {
+        terminus = _addr;
     }
 
     function _safeTransferFrom(address token, address from, address to, uint256 value) private {

@@ -25,9 +25,16 @@ contract ICTTAdapter is Initializable, IBridgeAdapter, NativeWrap {
     }
 
     mapping(bytes32 => bool) public transfers;
+    address public terminus;
 
     event ICTTMessageSent(bytes32 transferId, uint amount, uint64 dstChainId);
     event ICTTDebug(address sender, address token, uint balance, uint amount, bool isAmtBlcEq, uint64 dstChainId);
+
+
+    modifier onlyTerminus() {
+        require(_msgSender() == address(terminus), "only terminus");
+        _;
+    }
 
     modifier onlySelf(){
         require(_msgSender() == address(this), "ICTT only self");
@@ -40,7 +47,7 @@ contract ICTTAdapter is Initializable, IBridgeAdapter, NativeWrap {
         initNativeWrap(_nativeWrap);
     }
 
-    function bridge(uint64 _dstChainId, address _receiver, uint256 _amount, address _token, bytes calldata _bridgeParams, bytes calldata _bridgePayload)
+    function bridge(uint64 _dstChainId, address _receiver, uint256 _amount, address _token, bytes calldata _bridgeParams, bytes calldata _bridgePayload) onlyTerminus
     external payable returns (bytes memory bridgeResp){
 
 //        uint _bal = IERC20U(_token).balanceOf(_msgSender());
@@ -99,6 +106,10 @@ contract ICTTAdapter is Initializable, IBridgeAdapter, NativeWrap {
 
     function _decodeParams(bytes calldata _data) external view onlySelf returns (ICTTParams memory){
         return abi.decode((_data), (ICTTParams));
+    }
+
+    function setTerminus(address _addr) external onlyOwner {
+        terminus = _addr;
     }
 
     function rescueFund(address _token) external onlyOwner {

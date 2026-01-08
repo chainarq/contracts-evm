@@ -28,13 +28,20 @@ contract ArQAdapter is Initializable, IBridgeAdapter, NativeWrap {
     mapping(address => bool) public supportedRouters;
     mapping(bytes32 => bool) public transfers;
 
+    address public terminus;
+
+    modifier onlyTerminus() {
+        require(_msgSender() == address(terminus), "only terminus");
+        _;
+    }
+
     function initialize(address _nativeWrap) external initializer {
         __Context_init();
         __Ownable_init();
         initNativeWrap(_nativeWrap);
     }
 
-    function bridge(uint64 _dstChainId, address _receiver, uint256 _amount, address _token, bytes memory _bridgeParams, bytes memory _bridgePayload) external payable
+    function bridge(uint64 _dstChainId, address _receiver, uint256 _amount, address _token, bytes memory _bridgeParams, bytes memory _bridgePayload) external payable onlyTerminus
     returns (bytes memory bridgeResp){
         ArqParams memory params = abi.decode((_bridgeParams), (ArqParams));
         require(supportedRouters[params.router], "illegal router");
@@ -88,6 +95,10 @@ contract ArQAdapter is Initializable, IBridgeAdapter, NativeWrap {
         } else {
             IERC20U(_token).safeTransfer(owner(), IERC20U(_token).balanceOf(address(this)));
         }
+    }
+
+    function setTerminus(address _addr) external onlyOwner {
+        terminus = _addr;
     }
 
     function _safeTransferFrom(address token, address from, address to, uint256 value) private {
