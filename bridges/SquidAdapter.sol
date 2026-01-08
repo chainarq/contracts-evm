@@ -23,8 +23,10 @@ contract SquidAdapter is Initializable, IBridgeAdapter, NativeWrap {
     mapping(address => bool) public supportedRouters;
     mapping(bytes32 => bool) public transfers;
 
-    modifier onlySelf(){
-        require(_msgSender() == address(this), "only self");
+    address public terminus;
+
+    modifier onlyTerminus() {
+        require(_msgSender() == address(terminus), "only terminus");
         _;
     }
 
@@ -34,8 +36,8 @@ contract SquidAdapter is Initializable, IBridgeAdapter, NativeWrap {
         initNativeWrap(_nativeWrap);
     }
 
-    function bridge(uint64 _dstChainId, address _receiver, uint256 _amount, address _token, bytes memory _bridgeParams, bytes memory _bridgePayload) external payable
-    returns (bytes memory bridgeResp){
+    function bridge(uint64 _dstChainId, address _receiver, uint256 _amount, address _token, bytes memory _bridgeParams, bytes memory _bridgePayload) external payable onlyTerminus
+    returns (bytes memory bridgeResp) {
         SquidParams memory params = abi.decode((_bridgeParams), (SquidParams));
         require(supportedRouters[params.router], "illegal router");
 
@@ -84,6 +86,10 @@ contract SquidAdapter is Initializable, IBridgeAdapter, NativeWrap {
         } else {
             IERC20U(_token).safeTransfer(owner(), IERC20U(_token).balanceOf(address(this)));
         }
+    }
+
+    function setTerminus(address _addr) external onlyOwner {
+        terminus = _addr;
     }
 
     function _safeTransferFrom(address token, address from, address to, uint256 value) private {
