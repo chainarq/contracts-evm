@@ -27,6 +27,8 @@ contract ICTTAdapter is Initializable, IBridgeAdapter, NativeWrap {
     mapping(bytes32 => bool) public transfers;
     address public terminus;
 
+    mapping(address => bool) public supportedRouters;
+
     event ICTTMessageSent(bytes32 transferId, uint amount, uint64 dstChainId);
     event ICTTDebug(address sender, address token, uint balance, uint amount, bool isAmtBlcEq, uint64 dstChainId);
 
@@ -60,6 +62,8 @@ contract ICTTAdapter is Initializable, IBridgeAdapter, NativeWrap {
         try this._decodeParams(_bridgeParams){
             ICTTParams memory params = this._decodeParams(_bridgeParams);
 
+            require(supportedRouters[params.router], "illegal router");
+
             bytes32 transferId = keccak256(
                 abi.encodePacked(_receiver, _token, _amount, _dstChainId, params.nonce, uint64(block.chainid))
             );
@@ -70,7 +74,6 @@ contract ICTTAdapter is Initializable, IBridgeAdapter, NativeWrap {
 
             emit ICTTMessageSent(transferId, _amount, _dstChainId);
             return _swap(_token, _receiver, _amount, params, _bridgePayload);
-//            return "";
         } catch {}
 
         revert("ICTTAdapter: bridge failed");
@@ -110,6 +113,12 @@ contract ICTTAdapter is Initializable, IBridgeAdapter, NativeWrap {
 
     function setTerminus(address _addr) external onlyOwner {
         terminus = _addr;
+    }
+
+    function setSupportedRouters(address[] memory _routers, bool _enabled) public onlyOwner {
+        for (uint i = 0; i < _routers.length; i++) {
+            supportedRouters[_routers[i]] = _enabled;
+        }
     }
 
     function rescueFund(address _token) external onlyOwner {
