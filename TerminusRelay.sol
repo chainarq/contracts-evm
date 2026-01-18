@@ -74,6 +74,7 @@ contract TerminusRelay is Initializable, MailboxClient, MessageReceiver, ILayerZ
     event MessageReceived(bytes32 id, address source, uint64 srcChainId, bytes payload, MessageVia via);
     event UnknownRemote(address source, uint64 srcChainId, bytes message, MessageVia via);
     event InvalidMessage(address source, uint64 srcChainId, bytes message, MessageVia via);
+    event MsgIdExistsInQueue(address source, uint64 srcChainId, bytes message, MessageVia via);
     event InvalidCustodian(address source, uint64 srcChainId, bytes message, MessageVia via);
 
     /**
@@ -167,6 +168,11 @@ contract TerminusRelay is Initializable, MailboxClient, MessageReceiver, ILayerZ
             return;
         }
 
+        if (msgQueue[_msg.id] != "") {
+            emit MsgIdExistsInQueue(_msgSender(), lzToChId[_srcLzChainId], _payload, MessageVia.LayerZero);
+            return;
+        }
+
         emit MessageReceived(_msg.id, _remote, lzToChId[_srcLzChainId], _payload, MessageVia.LayerZero);
 
         msgQueue[_msg.id] = keccak256(_payload);
@@ -195,8 +201,13 @@ contract TerminusRelay is Initializable, MailboxClient, MessageReceiver, ILayerZ
             return;
         }
 
-        if (_msg.execs.length == 0) {
+        if (_msg.execs.length == 0 || msgQueue[_msg.id] != "") {
             emit InvalidMessage(_remote, lzToChId[_srcLzChainId], _payload, MessageVia.LayerZero);
+            return;
+        }
+
+        if (msgQueue[_msg.id] != "") {
+            emit MsgIdExistsInQueue(_remote, lzToChId[_srcLzChainId], _payload, MessageVia.LayerZero);
             return;
         }
 
@@ -243,8 +254,8 @@ contract TerminusRelay is Initializable, MailboxClient, MessageReceiver, ILayerZ
     }
 
     /* Non blocking returns false if id already exists*/
-    function tlpMsgQueue(bytes32 id, bytes32 msgHash) external onlyTerminusTlp returns(bool) {
-        if(msgQueue[id]!="") return false;
+    function tlpMsgQueue(bytes32 id, bytes32 msgHash) external onlyTerminusTlp returns (bool) {
+        if (msgQueue[id] != "") return false;
 
         msgQueue[id] = msgHash;
         return true;
@@ -436,6 +447,11 @@ contract TerminusRelay is Initializable, MailboxClient, MessageReceiver, ILayerZ
 
         if (_msg.execs.length == 0) {
             emit InvalidMessage(_remote, domToChId[_srcDomainId], _payload, MessageVia.Hyperlane);
+            return;
+        }
+
+        if (msgQueue[_msg.id] != "") {
+            emit MsgIdExistsInQueue(_remote, domToChId[_srcDomainId], _payload, MessageVia.Hyperlane);
             return;
         }
 
