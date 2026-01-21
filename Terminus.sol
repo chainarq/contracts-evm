@@ -73,7 +73,7 @@ contract Terminus is Initializable, ITerminusEvents, MultiCallable, SigVerifier,
      */
 
     function execute(Types.Execution[] memory _execs, Types.Source memory _src, Types.Destination memory _dst) external payable whenNotPaused nonReentrant {
-        _executeChecks(_execs.length, _src.amountIn, _dst.receiver);
+        _executeChecks(_execs.length, _src.amountIn, _dst.receiver, _src.deadline);
 
         Types.Execution memory _exec0 = _execs[0];
 
@@ -89,7 +89,7 @@ contract Terminus is Initializable, ITerminusEvents, MultiCallable, SigVerifier,
     // @notice: when executeGasless the msg.sender is the contract not the user
     // @notice: token amount is sent in to terminus by terminusGasless
     function executeGasless(Types.Execution[] memory _execs, Types.Source memory _src, Types.Destination memory _dst, uint _amountIn, address _tokenIn, address _sender) external payable whenNotPaused nonReentrant onlyTerminusGasless {
-        _executeChecks(_execs.length, _src.amountIn, _dst.receiver);
+        _executeChecks(_execs.length, _src.amountIn, _dst.receiver, _src.deadline);
 
         _amountIn = _amountIn - _src.gaslessFees;
 
@@ -127,10 +127,11 @@ contract Terminus is Initializable, ITerminusEvents, MultiCallable, SigVerifier,
         _processNextStep(id, _execs, _dst, tokenIn, nextToken, nextAmount, sendTokenAfter, _src.splitAddr, _sender);
     }
 
-    function _executeChecks(uint _execsLen, uint _srcAmountIn, address _dstReceiver) internal view {
+    function _executeChecks(uint _execsLen, uint _srcAmountIn, address _dstReceiver, uint _deadline) internal view {
         require(_execsLen > 0, "nop");
         require(_srcAmountIn > 0, "0 amount");
         require(_dstReceiver != address(0), "0 receiver");
+        require(_deadline > block.timestamp, "deadline exceeded");
     }
 
     function executeReceivedMessage(Types.Message calldata _msg, address _executor, bool retrySwap) external payable onlyRelay whenNotPaused nonReentrant returns (bool) {
