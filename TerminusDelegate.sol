@@ -82,6 +82,8 @@ contract TerminusDelegate is Initializable, ITerminusEvents, MultiCallable, SigV
         uint balAfter = IERC20U(tokenOut).balanceOf(_receiver);
 
         IERC20U(tokenOut).safeTransfer(address(terminus), (balAfter - balBefore));
+        
+        IERC20U(tokenIn).forceApprove(_swap.dex, 0);
 
         return (true, (balAfter - balBefore), tokenOut, sendTokenAfter);
     }
