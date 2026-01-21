@@ -116,7 +116,8 @@ contract TerminusDelegate is Initializable, ITerminusEvents, MultiCallable, SigV
             consumedValue += _msgFee;
         }
 
-        terminus.call{value: _thisBalance()}("");
+        (bool _ok,) = terminus.call{value: _thisBalance()}("");
+        require(_ok, "a. fail eth trm");
     }
 
     function procDistFees(SwapType _st, uint _stableAmt, address _stable, address _tokenIn, address _tokenOut, address _splitAddr, uint _dstGasCost, address _sender) external payable onlyTerminus nonReentrant returns (uint totalVal){
@@ -125,13 +126,14 @@ contract TerminusDelegate is Initializable, ITerminusEvents, MultiCallable, SigV
             reg.distributeFees{value: (_fee + _splitFee)}(_fee, _splitFee, _splitAddr);
             totalVal += (_fee + _splitFee);
         }
-        if (_dstGasCost > 0  && _sender != address(tRelay)) {
+        if (_dstGasCost > 0 && _sender != address(tRelay)) {
             (bool _ok,) = reg.feeVault().call{value: _dstGasCost}("");
             require(_ok, "feeVault send failed");
             totalVal += _dstGasCost;
         }
 
-        terminus.call{value: _thisBalance()}("");
+        (bool _ok,) = terminus.call{value: _thisBalance()}("");
+        require(_ok, "b. fail eth trm");
     }
 
     function verify(Types.Execution[] memory _execs, Types.Source memory _src) external view onlyTerminus {
