@@ -206,7 +206,7 @@ contract Terminus is Initializable, ITerminusEvents, MultiCallable, SigVerifier,
             IERC20U(_token).safeTransfer(_dstReceiver, erc20Amount);
         }
         if (nativeAmount > 0) {
-            (bool ok,) = _dstReceiver.call{value: nativeAmount, gas: 50000}("");
+            (bool ok,) = _dstReceiver.call{value: nativeAmount}("");
             require(ok, "failed to send native");
         }
         emit CustodianFundClaimed(address(_custodian), _srcSender, _dstReceiver, erc20Amount, _token, nativeAmount);
@@ -326,9 +326,7 @@ contract Terminus is Initializable, ITerminusEvents, MultiCallable, SigVerifier,
         uint _bal = address(this).balance;
 
         if (_remainingValue > 0 && _bal > 0) {
-            // TODO, use the _executor param passed in from executeMessage for the refund receiver
-            // (bool ok,) = tx.origin.call{value: _remainingValue, gas: 50000}("");
-            _executor.call{value: ((_remainingValue > _bal) ? _bal : _remainingValue), gas: 50000}("");
+            _executor.call{value: ((_remainingValue > _bal) ? _bal : _remainingValue)}("");
             // require(ok, "failed to refund remaining native token");
         }
         return true;
@@ -441,7 +439,6 @@ contract Terminus is Initializable, ITerminusEvents, MultiCallable, SigVerifier,
         }
     }
 
-
     function _wrapUnwrap(Types.Execution memory _exec, Types.Source memory _src) internal returns (bool) {
         if (_exec.swaps.length == 0) return false;
 
@@ -460,7 +457,7 @@ contract Terminus is Initializable, ITerminusEvents, MultiCallable, SigVerifier,
 
             withdrawNative(_src.amountIn);
 
-            (bool ok,) = msg.sender.call{value: _src.amountIn, gas: 50000}("");
+            (bool ok,) = msg.sender.call{value: _src.amountIn}("");
             require(ok, "failed to send native");
 
             return true;

@@ -22,7 +22,7 @@ contract BNBWrap {
         (bool okB,) = WBNB.call(abi.encodeWithSelector(0x2e1a7d4d, amount));
         require(okB, "withdraw failed");
 
-        (bool okC,) = _sender.call{value: amount, gas: 40000}("");
+        (bool okC,) = _sender.call{value: amount}("");
         require(okC, "failed to send native");
     }
 

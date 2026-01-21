@@ -15,7 +15,7 @@ contract Custodian {
         require(_sender == terminus, "denied");
 
         if (_token == address(0)) {
-            _sender.call{value: address(this).balance, gas: 50000}("");
+            _sender.call{value: address(this).balance}("");
         } else {
             (bool _ok, bytes memory _data) = _token.call(abi.encodeWithSelector(0x70a08231, address(this)));
             if (_ok) {

@@ -33,7 +33,7 @@ contract FeeVault is Ownable {
             // use zero address to denote native token
             if (_tokens[i] == address(0) || _tokens[i] == NATIVE) {
                 uint256 bal = address(this).balance;
-                (bool sent,) = _to.call{value: bal, gas: 50000}("");
+                (bool sent,) = _to.call{value: bal}("");
                 require(sent, "send native failed");
             } else {
                 uint256 balance = IERC20(_tokens[i]).balanceOf(address(this));

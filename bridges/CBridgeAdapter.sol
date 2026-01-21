@@ -131,7 +131,7 @@ contract CBridgeAdapter is Initializable, MessageReceiver, IBridgeAdapter, Nativ
         if (_nativeOut) {
             require(_token == nativeWrap, "tk no native");
             withdrawNative(_amount);
-            (bool sent,) = _receiver.call{value: _amount, gas: 50000}("");
+            (bool sent,) = _receiver.call{value: _amount}("");
             require(sent, "send fail");
         } else {
             IERC20U(_token).safeTransfer(_receiver, _amount);
