@@ -61,16 +61,17 @@ contract SquidAdapter is Initializable, IBridgeAdapter, NativeWrap {
 
         IERC20U _tok = IERC20U(_token);
 
+        uint _balBefore = _tok.balanceOf(address(this));
+
         _tok.forceApprove(address(_router), _amount);
 
         _router.call{value: msg.value}(params.data);
 
         _tok.safeApprove(address(_router), 0);
 
-        if (_tok.balanceOf(address(this)) >= _amount) {
+        if ((_tok.balanceOf(address(this)) - _balBefore) >= _amount) {
             revert("SquidAdapter: router call failed");
         }
-
     }
 
     function setSupportedRouters(address[] memory _routers, bool _enabled) public onlyOwner {
