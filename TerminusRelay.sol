@@ -306,6 +306,7 @@ contract TerminusRelay is Initializable, MailboxClient, MessageReceiver, ILayerZ
     // Teleporter IDs, LZ IDs and Domain IDs mappings to ChainIDs
     function setLZDomainChainIds(uint16[] memory _lzIds, uint32[] memory _domIds, uint64[] memory _chainIds) external onlyOwnerMulticall {
         require(_lzIds.length == _chainIds.length, "lengths mismatch");
+        require(_lzIds.length == _domIds.length, "lengths mismatch");
         for (uint i = 0; i < _lzIds.length; i++) {
             lzToChId[_lzIds[i]] = _chainIds[i];
             chToLZId[_chainIds[i]] = _lzIds[i];
