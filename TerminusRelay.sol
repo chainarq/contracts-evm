@@ -151,8 +151,8 @@ contract TerminusRelay is Initializable, MailboxClient, MessageReceiver, ILayerZ
 
         Types.Message memory _msg;
 
-        try this._decodePayload(_payload){
-            _msg = this._decodePayload(_payload);
+        try this._decodePayload(_payload) returns (Types.Message memory _decMsg) {
+            _msg = _decMsg;
         } catch {
             emit InvalidMessage(_msgSender(), lzToChId[_srcLzChainId], _payload, MessageVia.LayerZero);
             return;
@@ -194,8 +194,8 @@ contract TerminusRelay is Initializable, MailboxClient, MessageReceiver, ILayerZ
 
         Types.Message memory _msg;
 
-        try this._decodePayload(_payload){
-            _msg = this._decodePayload(_payload);
+        try this._decodePayload(_payload) returns (Types.Message memory _decMsg) {
+            _msg = _decMsg;
         } catch {
             emit InvalidMessage(_remote, lzToChId[_srcLzChainId], _payload, MessageVia.LayerZero);
             return;
@@ -439,8 +439,8 @@ contract TerminusRelay is Initializable, MailboxClient, MessageReceiver, ILayerZ
 
         Types.Message memory _msg;
 
-        try this._decodePayload(_payload){
-            _msg = this._decodePayload(_payload);
+        try this._decodePayload(_payload) returns (Types.Message memory _decMsg) {
+            _msg = _decMsg;
         } catch {
             emit InvalidMessage(_remote, domToChId[_srcDomainId], _payload, MessageVia.Hyperlane);
             return;

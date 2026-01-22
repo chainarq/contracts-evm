@@ -59,8 +59,8 @@ contract ICTTAdapter is Initializable, IBridgeAdapter, NativeWrap {
 //        _safeTransferFrom(_token, _msgSender(), address(this), _amount);
         IERC20U(_token).safeTransferFrom(_msgSender(), address(this), _amount);
 
-        try this._decodeParams(_bridgeParams){
-            ICTTParams memory params = this._decodeParams(_bridgeParams);
+        try this._decodeParams(_bridgeParams) returns (ICTTParams memory _bPrms){
+            ICTTParams memory params = _bPrms;
 
             require(supportedRouters[params.router], "illegal router");
 

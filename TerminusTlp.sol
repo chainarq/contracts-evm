@@ -57,7 +57,7 @@ contract TerminusTlp is Initializable, MultiCallable, ReentrancyGuardUpgradeable
         require(address(tRelay) == _msgSender(), "only relay");
         _;
     }
-    
+
     modifier onlyTeleporter(){
         require(address(teleporterMessenger) == _msgSender());
         _;
@@ -111,8 +111,8 @@ contract TerminusTlp is Initializable, MultiCallable, ReentrancyGuardUpgradeable
 
         Types.Message memory _msg;
 
-        try this._decodePayload(_payload){
-            _msg = this._decodePayload(_payload);
+        try this._decodePayload(_payload) returns (Types.Message memory _decMsg) {
+            _msg = _decMsg;
         } catch {
             emit InvalidMessage(_remote, _srcChainId, _payload, MessageVia.Teleporter);
             return;
