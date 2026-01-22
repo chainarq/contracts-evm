@@ -76,6 +76,7 @@ contract TerminusRelay is Initializable, MailboxClient, MessageReceiver, ILayerZ
     event InvalidMessage(address source, uint64 srcChainId, bytes message, MessageVia via);
     event MsgIdExistsInQueue(address source, uint64 srcChainId, bytes message, MessageVia via);
     event InvalidCustodian(address source, uint64 srcChainId, bytes message, MessageVia via);
+    event SgAmountReceivedInvalid(address source, uint64 srcChainId, bytes message, MessageVia via, uint _balance, uint _expected);
 
     /**
    * @dev Teleporter:  Emitted when a message is submited to be sent.
@@ -151,6 +152,8 @@ contract TerminusRelay is Initializable, MailboxClient, MessageReceiver, ILayerZ
 
         Types.Message memory _msg;
 
+        require(IERC20U(_token).balanceOf(address(this)) >= amountLD, "SG amount received invalid");
+
         try this._decodePayload(_payload) returns (Types.Message memory _decMsg) {
             _msg = _decMsg;
         } catch {
@@ -172,7 +175,7 @@ contract TerminusRelay is Initializable, MailboxClient, MessageReceiver, ILayerZ
             emit MsgIdExistsInQueue(_msgSender(), lzToChId[_srcLzChainId], _payload, MessageVia.LayerZero);
             return;
         }
-
+        
         emit MessageReceived(_msg.id, _remote, lzToChId[_srcLzChainId], _payload, MessageVia.LayerZero);
 
         msgQueue[_msg.id] = keccak256(_payload);
