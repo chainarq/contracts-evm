@@ -39,12 +39,8 @@ contract TerminusTlp is Initializable, MultiCallable, ReentrancyGuardUpgradeable
 
     ITeleporterMessenger public teleporterMessenger;
 
-    event MessageSent(bytes32 id, address remote, uint64 dstChainId, bytes payload, MessageVia via);
-    event MessageExecuted(bytes32 id, uint timestamp);
-    event MessageReceived(bytes32 id, address source, uint64 srcChainId, bytes payload, MessageVia via);
     event UnknownRemote(address source, uint64 srcChainId, bytes message, MessageVia via);
     event InvalidMessage(address source, uint64 srcChainId, bytes message, MessageVia via);
-    event InvalidCustodian(address source, uint64 srcChainId, bytes message, MessageVia via);
 
     /**
    * @dev Teleporter:  Emitted when a message is submited to be sent.
@@ -57,26 +53,11 @@ contract TerminusTlp is Initializable, MultiCallable, ReentrancyGuardUpgradeable
         _;
     }
 
-    modifier onlyTerminus() {
-        require(address(terminus) == _msgSender() || address(terminusDelegate) == _msgSender(), "only terminus");
-        _;
-    }
-
     modifier onlyRelay() {
         require(address(tRelay) == _msgSender(), "only relay");
         _;
     }
-
-    modifier onlyRemoteTlp(uint64 _chainId, address _remote) {
-        require(remotes[_chainId] == _remote, "unknown remote");
-        _;
-    }
-
-    modifier onlyExecutor(){
-        require(executors[_msgSender()], "only executor");
-        _;
-    }
-
+    
     modifier onlyTeleporter(){
         require(address(teleporterMessenger) == _msgSender());
         _;
