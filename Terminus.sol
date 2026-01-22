@@ -321,8 +321,8 @@ contract Terminus is Initializable, ITerminusEvents, MultiCallable, SigVerifier,
         uint _bal = address(this).balance;
 
         if (_remainingValue > 0 && _bal > 0) {
-            _executor.call{value: ((_remainingValue > _bal) ? _bal : _remainingValue)}("");
-            // require(ok, "failed to refund remaining native token");
+            (bool _ok, )= _executor.call{value: ((_remainingValue > _bal) ? _bal : _remainingValue)}("");
+            require(ok, "failed to send remaining native");
         }
         return true;
     }
