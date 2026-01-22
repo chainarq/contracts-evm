@@ -18,6 +18,7 @@ abstract contract TokenRegistry is MultiCallable {
     mapping(address => TokenParams) public tokens;
 
     function setToken(address _token, TokenParams memory _params) external onlyOwnerMulticall {
+        require(tokens[_token].feeDiscount < 1e6, "discount GT 1e6");
         tokens[_token] = _params;
     }
 }

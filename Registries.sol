@@ -238,6 +238,7 @@ contract Registries is DexRegistry, BridgeRegistry, FeeVaultRegistry, TokenRegis
     }
 
     function setDefaultFees(uint16 _defSplit, VarFee calldata _local, VarFee calldata _cross, uint32 _slippage) public onlyOwnerMulticall {
+        require(_slippage < 1e4, "_slippage GT 1e4");
         defaultFeeSplit = _defSplit;
         localFee = _local;
         crossFee = _cross;
