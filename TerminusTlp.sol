@@ -87,7 +87,7 @@ contract TerminusTlp is Initializable, MultiCallable, ReentrancyGuardUpgradeable
         __ReentrancyGuard_init();
     }
 
-    function sendTeleporterMessage(uint64 _dstChainId, address _feeTokenAddress, uint256 _feeAmount, uint256 _requiredGasLimit, bytes calldata _message) external onlyRelay {
+    function sendTeleporterMessage(uint64 _dstChainId, address _feeTokenAddress, uint256 _feeAmount, uint256 _requiredGasLimit, bytes calldata _message) external onlyRelay nonReentrant {
         // For non-zero fee amounts, first transfer the fee to this contract, and then
         // allow the Teleporter contract to spend it.
 
@@ -116,7 +116,7 @@ contract TerminusTlp is Initializable, MultiCallable, ReentrancyGuardUpgradeable
     }
 
 
-    function receiveTeleporterMessage(bytes32 sourceBlockchainID, address originSenderAddress, bytes calldata _payload) external onlyTeleporter {
+    function receiveTeleporterMessage(bytes32 sourceBlockchainID, address originSenderAddress, bytes calldata _payload) external onlyTeleporter nonReentrant {
 
         address _remote = originSenderAddress;
 
