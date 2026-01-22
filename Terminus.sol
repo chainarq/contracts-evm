@@ -292,11 +292,6 @@ contract Terminus is Initializable, ITerminusEvents, MultiCallable, SigVerifier,
             consumedValue += _procDistFees(SwapType.Cross, 0, address(0), tokenIn, _nextToken, _splitAddr, 0, _sender);
         }
 
-//        if (_execs.length == 0) {
-//            IERC20U(_nextToken).safeTransfer(_dst.receiver, _nextAmount); //TODO: DEBUG - REMOVE
-//            return 0; //TODO: DEBUG - REMOVE
-//        }
-
         _bridgeSend(_bridge, _bridgeOutReceiver, _nextToken, _nextAmount, _bridgePayload);
 
         consumedValue += _bridge.nativeFee;

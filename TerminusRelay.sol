@@ -228,7 +228,7 @@ contract TerminusRelay is Initializable, MailboxClient, MessageReceiver, ILayerZ
         } else if (_via == MessageVia.Hyperlane) {
             nativeFee = _quoteDispatch(chToDomId[_dstChainId], remotes[_dstChainId].addressToBytes32(), _message);
         } else if (_via == MessageVia.Teleporter) {
-            // TODO
+            // TODO : (Not implemented yet)
             nativeFee = 0;
         }
     }
