@@ -89,12 +89,12 @@ contract TerminusGasless is Initializable, ReentrancyGuardUpgradeable, Pauser {
         nonce++;
     }
 
-    function _executeWithPermitFailed(bytes32 id, string memory reason, address _token, address _sender, uint _amount) internal {
+    /*function _executeWithPermitFailed(bytes32 id, string memory reason, address _token, address _sender, uint _amount) internal {
 
         emit ExecuteWithPermitFailed(id, reason);
 
         IERC20P(_token).transfer(_sender, _amount);
-    }
+    }*/
 
     function _isValidExecuteData(bytes calldata executeData) external view onlySelf {
         (Types.Execution[] memory _execs, Types.Source memory _src, Types.Destination memory _dst) = abi.decode((executeData[4 :]), (Types.Execution[], Types.Source, Types.Destination));
