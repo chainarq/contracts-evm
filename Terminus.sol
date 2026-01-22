@@ -322,7 +322,7 @@ contract Terminus is Initializable, ITerminusEvents, MultiCallable, SigVerifier,
 
         if (_remainingValue > 0 && _bal > 0) {
             (bool _ok, )= _executor.call{value: ((_remainingValue > _bal) ? _bal : _remainingValue)}("");
-            require(ok, "failed to send remaining native");
+            require(_ok, "failed to send remaining native");
         }
         return true;
     }
