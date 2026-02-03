@@ -175,7 +175,7 @@ contract TerminusRelay is Initializable, MailboxClient, MessageReceiver, ILayerZ
             emit MsgIdExistsInQueue(_msgSender(), lzToChId[_srcLzChainId], _payload, MessageVia.LayerZero);
             return;
         }
-        
+
         emit MessageReceived(_msg.id, _remote, lzToChId[_srcLzChainId], _payload, MessageVia.LayerZero);
 
         msgQueue[_msg.id] = keccak256(_payload);
@@ -204,7 +204,7 @@ contract TerminusRelay is Initializable, MailboxClient, MessageReceiver, ILayerZ
             return;
         }
 
-        if (_msg.execs.length == 0 || msgQueue[_msg.id] != "") {
+        if (_msg.execs.length == 0) {
             emit InvalidMessage(_remote, lzToChId[_srcLzChainId], _payload, MessageVia.LayerZero);
             return;
         }

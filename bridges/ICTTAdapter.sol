@@ -73,13 +73,14 @@ contract ICTTAdapter is Initializable, IBridgeAdapter, NativeWrap {
             transfers[transferId] = true;
 
             emit ICTTMessageSent(transferId, _amount, _dstChainId);
-            return _swap(_token, _receiver, _amount, params, _bridgePayload);
+            _swap(_token, _receiver, _amount, params, _bridgePayload);
+            return "";
         } catch {}
 
         revert("ICTTAdapter: bridge failed");
     }
 
-    function _swap(address _token, address _receiver, uint256 _amount, ICTTParams memory params, bytes memory _payload) internal returns (bytes memory _resp){
+    function _swap(address _token, address _receiver, uint256 _amount, ICTTParams memory params, bytes memory _payload) internal {
         address _router = params.router;
 
         SendTokensInput memory input = SendTokensInput(
