@@ -27,6 +27,9 @@ contract TerminusGasless is Initializable, ReentrancyGuardUpgradeable, Pauser {
 
     uint public nonce;
 
+    bytes32 public DOMAIN_SEPARATOR;
+    bytes32 public constant EXECUTE_TYPEHASH = keccak256("Execute(address token,address sender,uint256 amount,uint256 nonce,uint256 deadline,bytes executeData)");
+
     event ExecuteWithPermitSuccess(bytes32 id);
     event ExecuteWithPermitFailed(bytes32 id, string reason);
 
@@ -35,6 +38,15 @@ contract TerminusGasless is Initializable, ReentrancyGuardUpgradeable, Pauser {
         __ReentrancyGuard_init();
         __Ownable_init();
         initPauser();
+        DOMAIN_SEPARATOR = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes("TerminusGasless")),
+                keccak256(bytes("1")),
+                block.chainid,
+                address(this)
+            )
+        );
     }
 
     modifier onlyExecutor(){
@@ -50,12 +62,19 @@ contract TerminusGasless is Initializable, ReentrancyGuardUpgradeable, Pauser {
     function terminusExecuteWithPermit(
         address _token, address _sender, uint _amount, uint _deadline,
         uint8 v, bytes32 r, bytes32 s,
+        uint8 v2, bytes32 r2, bytes32 s2,
         bytes calldata executeData
     ) external payable whenNotPaused nonReentrant onlyExecutor {
 
-        bytes32 id = keccak256(abi.encodePacked(_token, _sender, _amount, _deadline, executeData, nonce));
+        bytes32 id = keccak256(abi.encodePacked(_token, _sender, _amount, _deadline, executeData, nonce, block.chainid));
 
         require(!processed[id], "execution already processed");
+
+        // Verify EIP-712 signature
+        bytes32 structHash = keccak256(abi.encode(EXECUTE_TYPEHASH, _token, _sender, _amount, nonce, _deadline, keccak256(executeData)));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
+        address signer = ecrecover(digest, v2, r2, s2);
+        require(signer == _sender && signer != address(0), "invalid EIP-712 signature");
 
         // @notice execution will fail if executeData isn't valid
         try this._isValidExecuteData(executeData){
