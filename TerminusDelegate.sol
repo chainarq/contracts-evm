@@ -34,6 +34,8 @@ contract TerminusDelegate is Initializable, ITerminusEvents, MultiCallable, SigV
 
     address public terminus;
 
+    bytes32 public constant TERMINUSSWAP_TYPEHASH = keccak256("TerminusSwap(address tokenIn,uint256 amountIn,uint64 deadline)");
+
     event BridgeMessageSent(bytes32 id, address remote, uint64 dstChainId, bytes payload, MessageVia via);
 
     modifier onlyTerminus() {
@@ -136,9 +138,28 @@ contract TerminusDelegate is Initializable, ITerminusEvents, MultiCallable, SigV
         require(_ok, "b. fail eth trm");
     }
 
+    function _computeDomainSeparator() internal view returns (bytes32) {
+        return keccak256(abi.encode(
+            keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+            keccak256(bytes("Terminus")),
+            keccak256(bytes("1")),
+            uint64(block.chainid),
+            address(this)
+        ));
+    }
+
+
+
     function verify(Types.Execution[] memory _execs, Types.Source memory _src) external view onlyTerminus {
         require(_src.deadline > block.timestamp, "deadline exceeded");
-        bytes memory data = abi.encodePacked("terminus swap", uint64(block.chainid), _src.amountIn, _src.tokenIn, _src.deadline);
+        // EIP-712 domain separator to prevent signature replayability
+        bytes32 domainSeparator = _computeDomainSeparator();
+
+        bytes memory data = abi.encodePacked(
+            "\x19\x01",
+            domainSeparator,
+            keccak256(abi.encode(TERMINUSSWAP_TYPEHASH, _src.tokenIn, _src.amountIn, _src.deadline))
+        );
 
         for (uint i = 1; i < _execs.length; i++) {
             Types.Execution memory _ex = _execs[i];
@@ -157,7 +178,7 @@ contract TerminusDelegate is Initializable, ITerminusEvents, MultiCallable, SigV
             data = data.concat(execData);
         }
 
-        bytes32 signHash = keccak256(data).toEthSignedMessageHash();
+        bytes32 signHash = keccak256(data);
         verifySig(signHash, _src.quoteSig);
     }
 
