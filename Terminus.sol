@@ -256,7 +256,7 @@ contract Terminus is Initializable, ITerminusEvents, MultiCallable, SigVerifier,
 
             if (_sendTokenAfter) _sendToken(_nextToken, _nextAmount, _dst.receiver, _dst.nativeOut);
             emit StepExecuted(_id, _nextAmount, _nextToken);
-            return 0;
+            return consumedValue;
         }
 
         Types.Bridge memory _bridge = _exec0.bridge;
