@@ -150,4 +150,6 @@ contract CBridgeAdapter is Initializable, MessageReceiver, IBridgeAdapter, Nativ
             IERC20U(_token).safeTransfer(owner(), IERC20U(_token).balanceOf(address(this)));
         }
     }
+
+    uint256[50] private __gap;
 }

@@ -486,4 +486,7 @@ contract TerminusRelay is Initializable, MailboxClient, MessageReceiver, ILayerZ
     receive() external payable {}
 
     fallback() external payable {}
+
+    uint256[50] private __gap;
+
 }

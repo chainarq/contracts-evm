@@ -98,4 +98,5 @@ contract HyperlaneAdapter is Initializable, IBridgeAdapter, NativeWrap {
         require(success && (data.length == 0 || abi.decode(data, (bool))), "LaneAdapter: TRANSFER_FROM_FAILED");
     }
 
+    uint256[50] private __gap;
 }

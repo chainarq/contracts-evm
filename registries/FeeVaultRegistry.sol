@@ -29,4 +29,6 @@ abstract contract FeeVaultRegistry is MultiCallable {
         feeVault = _vault;
         emit FeeVaultUpdated(oldFeeCollector, _vault);
     }
+
+    uint256[50] private __gap;
 }

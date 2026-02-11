@@ -59,4 +59,6 @@ abstract contract DexRegistry is MultiCallable {
         require(dexFunc2Codec[_dex][_selector] != address(0), "unsupported dex");
         return ICodec(dexFunc2Codec[_dex][_selector]);
     }
+
+    uint256[50] private __gap;
 }

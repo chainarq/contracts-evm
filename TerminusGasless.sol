@@ -143,4 +143,7 @@ contract TerminusGasless is Initializable, ReentrancyGuardUpgradeable, Pauser {
             IERC20P(_token).safeTransfer(owner(), IERC20P(_token).balanceOf(address(this)));
         }
     }
+
+    uint256[50] private __gap;
+
 }

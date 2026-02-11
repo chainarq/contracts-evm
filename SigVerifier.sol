@@ -36,4 +36,7 @@ contract SigVerifier is OwnableUpgradeable {
         address _signer = _hash.recover(_feeSig);
         require(_signer == signer, "invalid signer");
     }
+
+    uint256[50] private __gap;
+
 }

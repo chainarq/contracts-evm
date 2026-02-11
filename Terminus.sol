@@ -489,4 +489,7 @@ contract Terminus is Initializable, ITerminusEvents, MultiCallable, SigVerifier,
             remotes[_chainIds[i]] = _remotes[i];
         }
     }
+
+    uint256[50] private __gap;
+
 }

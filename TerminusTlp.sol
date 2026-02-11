@@ -186,4 +186,7 @@ contract TerminusTlp is Initializable, MultiCallable, ReentrancyGuardUpgradeable
     receive() external payable {}
 
     fallback() external payable {}
+
+    uint256[50] private __gap;
+
 }

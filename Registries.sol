@@ -278,4 +278,6 @@ contract Registries is DexRegistry, BridgeRegistry, FeeVaultRegistry, TokenRegis
         }
     }
 
+    uint256[50] private __gap;
+
 }

@@ -21,4 +21,6 @@ abstract contract TokenRegistry is MultiCallable {
         require(tokens[_token].feeDiscount < 1e6, "discount GT 1e6");
         tokens[_token] = _params;
     }
+
+    uint256[50] private __gap;
 }

@@ -197,4 +197,7 @@ contract TerminusDelegate is Initializable, ITerminusEvents, MultiCallable, SigV
     function setTerminusRelay(address _addr) external isOwnTermMult {
         tRelay = ITerminusRelay(payable(_addr));
     }
+
+    uint256[50] private __gap;
+
 }

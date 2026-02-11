@@ -36,4 +36,6 @@ abstract contract BridgeRegistry is MultiCallable {
         }
         emit SupportedBridgesUpdated(_providers, _adapters);
     }
+
+    uint256[50] private __gap;
 }
