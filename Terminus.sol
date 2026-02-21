@@ -106,7 +106,7 @@ contract Terminus is Initializable, ITerminusEvents, MultiCallable, SigVerifier,
         bytes32 id = _computeId(_sender, _dst.receiver, _src.nonce);
 
         if (_execs.length > 1) {
-            terminusDelegate.verify(_execs, _src);
+            terminusDelegate.verify(_execs, _src, terminusDelegate.exec_nonce());
         }
 
         // process swaps if any
@@ -125,6 +125,8 @@ contract Terminus is Initializable, ITerminusEvents, MultiCallable, SigVerifier,
         }
 
         _processNextStep(id, _execs, _dst, tokenIn, nextToken, nextAmount, sendTokenAfter, _src.splitAddr, _sender);
+
+        terminusDelegate.incrementNonce();
     }
 
     function _executeChecks(uint _execsLen, uint _srcAmountIn, address _dstReceiver, uint _deadline) internal view {

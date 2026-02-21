@@ -36,6 +36,9 @@ contract TerminusDelegate is Initializable, ITerminusEvents, MultiCallable, SigV
 
     bytes32 public constant TERMINUSSWAP_TYPEHASH = keccak256("TerminusSwap(address tokenIn,uint256 amountIn,uint64 deadline)");
 
+    uint public exec_nonce;
+    mapping(uint256 => bool) public used_nonce;
+
     event BridgeMessageSent(bytes32 id, address remote, uint64 dstChainId, bytes payload, MessageVia via);
 
     modifier onlyTerminus() {
@@ -148,10 +151,9 @@ contract TerminusDelegate is Initializable, ITerminusEvents, MultiCallable, SigV
         ));
     }
 
-
-
-    function verify(Types.Execution[] memory _execs, Types.Source memory _src) external view onlyTerminus {
+    function verify(Types.Execution[] memory _execs, Types.Source memory _src, uint _nonce) external view onlyTerminus {
         require(_src.deadline > block.timestamp, "deadline exceeded");
+        require(!used_nonce[_nonce], "nonce reused");
         // EIP-712 domain separator to prevent signature replayability
         bytes32 domainSeparator = _computeDomainSeparator();
 
@@ -173,13 +175,19 @@ contract TerminusDelegate is Initializable, ITerminusEvents, MultiCallable, SigV
                 _ex.bridgeOutToken,
                 // native fee also needs to be agreed upon by chainarq for any subsequent bridge
                 // since the fee is provided by chainarq's executor
-                _ex.bridge.nativeFee
+                _ex.bridge.nativeFee,
+                _nonce
             );
             data = data.concat(execData);
         }
 
         bytes32 signHash = keccak256(data);
         verifySig(signHash, _src.quoteSig);
+    }
+
+    function incrementNonce() external onlyTerminus {
+        used_nonce[exec_nonce] = true;
+        exec_nonce++;
     }
 
     function _thisBalance() internal view returns (uint){
